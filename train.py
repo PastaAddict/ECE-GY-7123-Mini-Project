@@ -11,6 +11,7 @@ import torch_optimizer as optimizers
 import os
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+gpu_number = torch.cuda.device_count()
 
 import torchvision
 import torchvision.transforms as transforms
@@ -64,7 +65,7 @@ transform_test = transforms.Compose([
 trainset = torchvision.datasets.CIFAR10(
     root='./data', train=True, download=True, transform=transform_train)
 trainloader = torch.utils.data.DataLoader(
-    trainset, batch_size=bsize, shuffle=True, num_workers=2)
+    trainset, batch_size=int(bsize/gpu_number), shuffle=True, num_workers=2)
 
 testset = torchvision.datasets.CIFAR10(
     root='./data', train=False, download=True, transform=transform_test)
