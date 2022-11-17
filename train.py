@@ -41,9 +41,9 @@ parser.add_argument('--augmentation', default='AB', type=str, choices = ['A', 'A
                     help='augmentation, no, no+mixup, no+mixup+cutmix')
 
 print(parser)
-arguments = ["--batch_size", "512" ,"--net_type", "resnet", 
+arguments = ["--batch_size", "256" ,"--net_type", "resnet", 
              "--num_blocks" , "4,3,3,0", "--optimizer",  
-             "lamb", "--augmentation", "ABC"]
+             "sgd", "--augmentation", "ABC"]
 args = parser.parse_args(arguments)
 
 
