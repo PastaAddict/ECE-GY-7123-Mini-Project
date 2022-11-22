@@ -11,7 +11,6 @@ import torch_optimizer as optimizers
 import os
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-gpu_number = torch.cuda.device_count()
 
 import torchvision
 import torchvision.transforms as transforms
@@ -23,6 +22,11 @@ from pyramidnet import PyramidNet
 
 import argparse
 
+'''
+Argparser for the different hyperparameters, note that not all hyperparams can be specified,
+learning rate for example or the number of epochs are considered constant.
+This was done in accordance to the way the experiments were conducted.
+'''
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('--batch_size', default=256, type=int, help='batch size')
 parser.add_argument('--net_type', default='pyramidnet', type=str, choices = ['resnet', 'pyramidnet'],
@@ -41,13 +45,14 @@ parser.add_argument('--augmentation', default='AB', type=str, choices = ['A', 'A
                     help='augmentation, no, no+mixup, no+mixup+cutmix')
 
 print(parser)
-arguments = ["--batch_size", "256" ,"--net_type", "resnet", 
-             "--num_blocks" , "4,3,3,0", "--optimizer",  
-             "sgd", "--augmentation", "ABC"]
+arguments = ["--batch_size", "128" ,"--net_type", "resnet", "--num_blocks" , "4,3,3,0", 
+             "--optimizer", "sgd", "--augmentation", "A"]
 args = parser.parse_args(arguments)
 
 
-# Data
+'''
+Loading Cifar10 
+'''
 bsize = args.batch_size
 print('==> Preparing data..')
 transform_train = transforms.Compose([
@@ -57,7 +62,7 @@ transform_train = transforms.Compose([
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 ])
 
-transform_test = transforms.Compose([
+transform_val = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 ])
@@ -65,24 +70,26 @@ transform_test = transforms.Compose([
 trainset = torchvision.datasets.CIFAR10(
     root='./data', train=True, download=True, transform=transform_train)
 trainloader = torch.utils.data.DataLoader(
-    trainset, batch_size=int(bsize/gpu_number), shuffle=True, num_workers=2)
+    trainset, batch_size=int(bsize), shuffle=True, num_workers=2)
 
-testset = torchvision.datasets.CIFAR10(
-    root='./data', train=False, download=True, transform=transform_test)
-testloader = torch.utils.data.DataLoader(
-    testset, batch_size=100, shuffle=False, num_workers=2)
+valset = torchvision.datasets.CIFAR10(
+    root='./data', train=False, download=True, transform=transform_val)
+valloader = torch.utils.data.DataLoader(
+    valset, batch_size=100, shuffle=False, num_workers=2)
 
 classes = ('plane', 'car', 'bird', 'cat', 'deer',
            'dog', 'frog', 'horse', 'ship', 'truck')
 
 
-# all together
+'''
+Training (1 epoch) and testing functions
+'''
 
 def train(epoch, network, criterion, optimizer):
 
     global args
-    if args.augmentation == 'A':
-        p1, p2 = 1, 0
+    if args.augmentation == 'A': # depending on the augmentation strategy, 
+        p1, p2 = 1, 0            # the probabilities p1 and p2 are adjusted accordingly
     elif args.augmentation == 'AB':
         p1, p2 = 0.2, 1
     elif args.augmentation == 'ABC':
@@ -112,19 +119,19 @@ def train(epoch, network, criterion, optimizer):
           inputs, targets_a, targets_b = map(Variable, (inputs,
                                                         targets_a, targets_b))
           outputs = network(inputs)
-          loss = mix_criterion(criterion, outputs, targets_a, targets_b, lam)
+          loss = mix_criterion(criterion, outputs, targets_a, targets_b, lam) # the loss needs to be adjusted so that it accounts for mixed labels
           train_loss += loss.item()
           _, predicted = outputs.max(1)
-          total += targets.size(0)
+          total += targets.size(0) # Accuracy on the training set
           correct += (lam * predicted.eq(targets_a.data).cpu().sum().float()
                       + (1 - lam) * predicted.eq(targets_b.data).cpu().sum().float())
           
-        else:
+        else: # No mixing
           outputs = network(inputs)
           loss = criterion(outputs, targets)
           train_loss += loss.item()
           _, predicted = outputs.max(1)
-          total += targets.size(0)
+          total += targets.size(0) # Accuracy on the training set
           correct += predicted.eq(targets).sum().item()
 
 
@@ -137,14 +144,14 @@ def train(epoch, network, criterion, optimizer):
         progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
                      % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
 
-def test(epoch, network, criterion, optimizer):
+def test(epoch, network, criterion):
     global best_acc
     network.eval()
     test_loss = 0
     correct = 0
     total = 0
     with torch.no_grad():
-        for batch_idx, (inputs, targets) in enumerate(testloader):
+        for batch_idx, (inputs, targets) in enumerate(valloader):
             inputs, targets = inputs.to(device), targets.to(device)
             outputs = network(inputs)
             loss = criterion(outputs, targets)
@@ -154,7 +161,7 @@ def test(epoch, network, criterion, optimizer):
             total += targets.size(0)
             correct += predicted.eq(targets).sum().item()
 
-            progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
+            progress_bar(batch_idx, len(valloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
                          % (test_loss/(batch_idx+1), 100.*correct/total, correct, total))
 
 
@@ -172,24 +179,22 @@ def test(epoch, network, criterion, optimizer):
         final_directory = os.path.join(current_directory, r'models')
         if not os.path.isdir(final_directory):
             os.mkdir(final_directory)
-        #modelname = ' '.join(arguments)
         torch.save(state, './models/'+' '.join(arguments)+'.pth')
         best_acc = acc
 
 
-
-#net = PyramidNet('cifar10', 110, 84, 10).to(device)
+# initialize the network
 if args.net_type == 'resnet':
     net = ResNet(BasicBlock,[int(item) for item in args.num_blocks.split(',')]).to(device)
-    net = nn.DataParallel(net)
 elif args.net_type == 'pyramidnet':
     net = PyramidNet('cifar10', args.depth, args.alpha, 10).to(device)
 
-
+# Constant hyperparameters
 criterion = nn.CrossEntropyLoss()
 LR = 1e-2
 epochs = 500
 
+#initialize the optimizer
 if args.optimizer == 'sgd':
     optimizer = optim.SGD(net.parameters(), lr=LR,
                         momentum=0.9, weight_decay=1e-4)
@@ -199,11 +204,13 @@ elif args.optimizer == 'lamb':
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
 
 
+# main train loop
+
 best_acc = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
-#print(net, optimizer)
+
 for epoch in range(start_epoch, start_epoch+epochs):
     train(epoch, net, criterion, optimizer)
   
-    test(epoch, net, criterion, optimizer)
+    test(epoch, net, criterion)
     scheduler.step()
