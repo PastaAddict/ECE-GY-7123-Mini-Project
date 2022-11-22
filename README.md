@@ -19,8 +19,8 @@
 ### To run an experiment open train.py, and edit line 44, to change the parameters
  * Ex for resnet: arguments = ["--batch_size", "512" ,"--net_type", "resnet", "--num_blocks" , "4,3,3,0", "--optimizer", "lamb", "--augmentation", "ABC"]
  * Ex for pyramidnet: arguments = ["--batch_size", "2048" ,"--net_type", "pyramidnet", "--optimizer", "lamb", "--augmentation", "ABC"]
- After the training is over a .pth file will be created in the models directory with the name of the experiment (/home/kristi/models/--batch_size 512 --net_type resnet --num_blocks 2,2,2,0 --optimizer lamb --augmentation AB.pth). 
 
+After the training is over a .pth file will be created in the models directory with the name of the experiment (/home/kristi/models/--batch_size 512 --net_type resnet --num_blocks 2,2,2,0 --optimizer lamb --augmentation AB.pth). 
 This file contains the parameters of the best performing model during the training process and the best accuracy on the test set.
 
 ### Extra required libraries
