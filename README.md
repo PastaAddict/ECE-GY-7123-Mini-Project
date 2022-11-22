@@ -1,4 +1,4 @@
-# ECE-GY-7123-Mini_Project
+# ECE-GY-7123-Mini Project
 
 * Kristi Topollai
 * Beyza Kiper
@@ -12,9 +12,9 @@
 * SGD-M: μ=0.9, LR=1e-2, nesterov=True, weight decay = 1e-4
 * LAMB: LR=5e-3, weight decay = 0.02
 * Augmentations
- + A: No augmentation
- + AB: with p=0.2 no augmentation with p=0.8 Mixup augmentation
- + ABC: with p=0.2 no augmentation with p=0.8 -> with p=0.5 Mixup with p=0.5 Cutmix
+ * A: No augmentation
+ * AB: with p=0.2 no augmentation with p=0.8 Mixup augmentation
+ * ABC: with p=0.2 no augmentation with p=0.8 -> with p=0.5 Mixup with p=0.5 Cutmix
 
 ### To run an experiment open train.py, and edit line 44, to change the parameters
  * Ex for resnet: arguments = ["--batch_size", "512" ,"--net_type", "resnet", "--num_blocks" , "4,3,3,0", "--optimizer", "lamb", "--augmentation", "ABC"]
