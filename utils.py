@@ -1,3 +1,6 @@
+'''
+Taken from https://github.com/kuangliu/pytorch-cifar
+'''
 import sys
 import time
 

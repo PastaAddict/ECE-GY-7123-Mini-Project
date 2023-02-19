@@ -1,3 +1,7 @@
+'''
+Taken from https://github.com/dyhan0920/PyramidNet-PyTorch
+'''
+
 import numpy as np
 import torch
 import torch.nn as nn

@@ -1,3 +1,8 @@
+'''
+Taken from
+- https://github.com/clovaai/CutMix-PyTorch
+- https://github.com/facebookresearch/mixup-cifar10
+'''
 import numpy as np
 import torch
 
