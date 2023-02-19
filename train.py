@@ -42,8 +42,7 @@ parser.add_argument('--augmentation', default='AB', type=str, choices = ['A', 'A
 
 print(parser)
 arguments = ["--batch_size", "256" ,"--net_type", "resnet", 
-             "--num_blocks" , "4,3,3,0", "--optimizer",  
-             "sgd", "--augmentation", "ABC"]
+             "--optimizer",  "sgd", "--augmentation", "ABC"]
 args = parser.parse_args(arguments)
 
 
