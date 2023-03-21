@@ -38,21 +38,20 @@ parser.add_argument('--alpha', default=84, type=int,
 parser.add_argument('--num_blocks', default='1,1,1,1', type=str,
                     help='resnet architecture')
 
-parser.add_argument('--optimizer', default='sgd', type=str, choices = ['sgd', 'lamb'],
+parser.add_argument('--optimizer', default='sgd', type=str, choices = ['sgd', 'sgdm', 'adam', 'lamb'],
                     help='optimizer, SGD-M or LAMB')
+
+parser.add_argument('--lr', default=0.001, type=float,
+                    help='learning rate')
 
 parser.add_argument('--augmentation', default='AB', type=str, choices = ['A', 'AB', 'ABC'],
                     help='augmentation, no, no+mixup, no+mixup+cutmix')
 
 print(parser)
-<<<<<<< HEAD
-arguments = ["--batch_size", "256" ,"--net_type", "resnet", 
-             "--optimizer",  "sgd", "--augmentation", "ABC"]
-=======
-arguments = ["--batch_size", "128" ,"--net_type", "resnet", "--num_blocks" , "4,3,3,0", 
-             "--optimizer", "sgd", "--augmentation", "A"]
->>>>>>> 3d5cb4a078c632982a88c3f7030fc843d78b5157
+arguments = ["--batch_size", "128" ,"--net_type", "resnet", "--num_blocks", "2,2,2,2",
+             "--optimizer",  "sgdm", "--lr", "0.01", "--augmentation", "A"]
 args = parser.parse_args(arguments)
+print(args)
 
 
 '''
@@ -148,6 +147,8 @@ def train(epoch, network, criterion, optimizer):
 
         progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
                      % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
+    
+    return correct/total, train_loss/(batch_idx+1)
 
 def test(epoch, network, criterion):
     global best_acc
@@ -170,6 +171,7 @@ def test(epoch, network, criterion):
                          % (test_loss/(batch_idx+1), 100.*correct/total, correct, total))
 
 
+
     # Save checkpoint.
     acc = 100.*correct/total
     if acc > best_acc:
@@ -186,6 +188,8 @@ def test(epoch, network, criterion):
             os.mkdir(final_directory)
         torch.save(state, './models/'+' '.join(arguments)+'.pth')
         best_acc = acc
+    
+    return correct/total, test_loss/(batch_idx+1)
 
 
 # initialize the network
@@ -196,13 +200,19 @@ elif args.net_type == 'pyramidnet':
 
 # Constant hyperparameters
 criterion = nn.CrossEntropyLoss()
-LR = 1e-2
-epochs = 500
+LR = args.lr
+epochs = 200
 
 #initialize the optimizer
-if args.optimizer == 'sgd':
+if args.optimizer == 'sgdm':
     optimizer = optim.SGD(net.parameters(), lr=LR,
-                        momentum=0.9, weight_decay=1e-4)
+                        momentum=0.9)
+elif args.optimizer == 'sgd':
+    optimizer = optim.SGD(net.parameters(), lr=LR)
+
+elif args.optimizer == 'adam':
+    optimizer = optim.Adam(net.parameters(), lr=LR)
+                        
 elif args.optimizer == 'lamb':
     optimizer = optimizers.Lamb(net.parameters(), lr=LR, weight_decay = 0.02)
 
@@ -213,9 +223,13 @@ scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
 
 best_acc = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
-
+metrics = []
 for epoch in range(start_epoch, start_epoch+epochs):
-    train(epoch, net, criterion, optimizer)
-  
-    test(epoch, net, criterion)
-    scheduler.step()
+    train_acc, train_loss = train(epoch, net, criterion, optimizer)
+    test_acc, test_loss = test(epoch, net, criterion)
+    metrics.append([train_acc, train_loss, test_acc, test_loss])
+    #scheduler.step()
+
+state = torch.load('./models/'+' '.join(arguments)+'.pth')
+state.update({'metrics': np.array(metrics)})
+torch.save(state, './models/'+' '.join(arguments)+'.pth')
